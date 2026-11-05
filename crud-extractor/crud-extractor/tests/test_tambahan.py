@@ -92,3 +92,30 @@ def test_kasus_tepi_komentar_blok_bintang_berurutan():
 def test_kasus_tepi_operator_menempel():
     toks = tokenize("a<>b<=c")
     assert [t.value for t in toks if t.type != T.EOF] == ["a", "<>", "b", "<=", "c"]
+
+# ==============================================================================
+# 3. TEST REGRESI PARSER
+# ==============================================================================
+
+from crud import ast_nodes as ast
+from crud.parser import parse_sql
+
+def test_regresi_insert_select_didukung():
+    script = parse_sql("INSERT INTO arsip (id) SELECT id FROM pesanan")
+    assert script.errors == []
+    stmt = script.statements[0]
+    assert isinstance(stmt.query, ast.Select) and stmt.values == []
+
+def test_regresi_error_recovery_sampai_titik_koma():
+    script = parse_sql("SELECT FROM; SELECT id FROM t; DELETE FROM x")
+    assert len(script.errors) == 1
+    assert len(script.statements) == 2
+
+def test_regresi_presedensi_and_lebih_tinggi_dari_or():
+    where = parse_sql("SELECT a FROM t WHERE a = 1 OR b = 2 AND c = 3").statements[0].where
+    assert where.op == "OR" and where.right.op == "AND"
+
+def test_regresi_left_outer_join_didukung():
+    script = parse_sql("SELECT a FROM t LEFT OUTER JOIN u ON u.x = t.x")
+    assert script.errors == []
+    assert script.statements[0].joins[0].kind == "LEFT"
