@@ -119,3 +119,30 @@ def test_regresi_left_outer_join_didukung():
     script = parse_sql("SELECT a FROM t LEFT OUTER JOIN u ON u.x = t.x")
     assert script.errors == []
     assert script.statements[0].joins[0].kind == "LEFT"
+
+# ==============================================================================
+# 4. TEST REGRESI RESOLVER
+# ==============================================================================
+
+from crud.resolver import Resolver
+
+def _resolve(sql):
+    s = parse_sql(sql)
+    d = Resolver().resolve_script(s)
+    return s, d
+
+def _cols(s):
+    return [n for st in s.statements for n in ast.iter_nodes(st) if isinstance(n, ast.ColumnRef)]
+
+def test_regresi_shadowing_alias_dalam_menutupi_luar():
+    s, d = _resolve("SELECT 1 FROM a x WHERE EXISTS (SELECT 1 FROM b x WHERE x.id = 1)")
+    assert [c.resolved for c in _cols(s)] == ["b"]
+
+def test_regresi_scope_delete_tidak_bocor_ke_statement_berikutnya():
+    s, d = _resolve("DELETE FROM a d WHERE d.id = 1; SELECT d.id FROM b")
+    assert any(x.level == "error" and "'d'" in x.message for x in d)
+
+def test_regresi_kolom_tanpa_qualifier_ambigu():
+    s, d = _resolve("SELECT id FROM a, b")
+    assert _cols(s)[0].resolved is None
+    assert [x.level for x in d] == ["warning"] and "ambigu" in d[0].message

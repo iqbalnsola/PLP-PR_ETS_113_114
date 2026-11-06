@@ -12,8 +12,8 @@ alternatif yang ditolak dan alasannya. Contoh topik (boleh memilih yang lain):
 
 | No | Keputusan | Alternatif yang ditolak | Alasan |
 | --- | --- | --- | --- |
-| 1 | | | |
-| 2 | | | |
+| 1 | Error recovery berhenti dan lanjut tepat setelah `;` (`_synchronize()` membuang token sampai `SEMICOLON` ikut terbuang). | Berhenti di keyword awal statement berikutnya (`SELECT`, `INSERT`, dst.). | `SELECT` juga muncul di dalam subquery, jadi parser bisa berhenti di tengah statement yang masih rusak dan melaporkan error ganda. Spesifikasi bagian 6 juga menetapkan `;` sebagai batas. |
+| 2 | Pencarian qualifier naik dari `self.scope` lewat rantai `parent`, dan entri pertama yang ditemukan dipakai. | Mengumpulkan rantai scope ke list lalu membaliknya (cara lama), atau hanya mencari di scope terdalam. | Naik lewat `parent` menghasilkan shadowing yang benar dan tetap mendukung correlated subquery. Hanya mencari di scope terdalam membuat subquery tidak bisa merujuk alias luar. |
 | 3 | | | |
 | 4 | | | |
 | 5 | | | |

@@ -200,3 +200,84 @@ Di `crud/parser.py`, fungsi `_join`, tepat setelah `LEFT` terbaca, ditambahkan `
 
 **Peran AI.**
 AI menemukan ketidaksesuaian ini saat mencocokkan `_join()` dengan grammar di `SPESIFIKASI.md`  bagian 3. Diverifikasi dengan test regresi di atas dan pemeriksaan manual pada parser lama (error diharapkan `JOIN`, ditemukan `'OUTER'`).
+
+---
+
+## Bug 8: Pencarian Alias Dimulai dari Scope Terluar, Bukan Terdalam
+
+**Ditemukan oleh:** Muhamad Akmal Rizqillah · **Diperbaiki oleh:** Muhamad Akmal Rizqillah
+
+**Gejala.**
+Pada subquery yang memakai alias yang sama dengan query luar, kolom di subquery ter-resolve ke tabel milik query luar. Menurut SPESIFIKASI.md bagian 4.3, qualifier dicari dari scope terdalam ke luar dan yang pertama ditemukan dipakai, sehingga alias di dalam harus menutupi (shadow) alias di luar.
+
+**Reproduksi minimal.** SQL terpendek yang memicu bug:
+
+```sql
+SELECT 1 FROM a x WHERE EXISTS (SELECT 1 FROM b x WHERE x.id = 1)
+```
+
+**Akar masalah.**
+Scope bersarang bekerja seperti tumpukan: nama dicari mulai dari scope paling dalam, lalu naik ke scope di atasnya. `_lookup()` yang lama mengumpulkan scope dari yang terdalam ke terluar, lalu memakai `reversed(chain)`, sehingga yang dicek lebih dulu justru scope terluar. Akibatnya alias di luar selalu menang. Correlated subquery tetap berjalan, karena nama yang tidak ada di dalam akan ketemu di luar, jadi bug ini tidak terlihat pada kasus biasa.
+
+**Perbaikan.**
+Di `crud/resolver.py`, fungsi `_lookup`, kami hapus daftar `chain` dan `reversed`. Sekarang fungsi berjalan langsung dari `self.scope` ke `parent`, dan mengembalikan entri pertama yang ditemukan. *Alternatif yang ditolak:* tetap memakai `chain` tapi tanpa `reversed`. Ditolak karena membuat daftar tambahan yang tidak diperlukan, sedangkan rantai `parent` sudah cukup.
+
+**Test regresi.**
+`test_regresi_shadowing_alias_dalam_menutupi_luar` di `tests/test_tambahan.py`.
+
+**Peran AI.**
+AI membantu menunjukkan bahwa `_lookup()` mencari alias dari scope terluar karena `reversed(chain)`. Diverifikasi dengan SQL shadowing (kode lama hasilnya `a`, kode baru `b`) dan test regresi.
+
+---
+
+## Bug 9: Scope DELETE Tidak Dilepas dan Bocor ke Statement Berikutnya
+
+**Ditemukan oleh:** Muhamad Akmal Rizqillah · **Diperbaiki oleh:** Muhamad Akmal Rizqillah
+
+**Gejala.**
+Alias yang dideklarasikan di statement `DELETE` masih terlihat di statement sesudahnya. SPESIFIKASI.md bagian 4.5 menyatakan setelah satu statement selesai di-resolve tidak boleh ada scope tersisa, dan alias statement sebelumnya tidak boleh terlihat.
+
+**Reproduksi minimal.** SQL terpendek yang memicu bug:
+
+```sql
+DELETE FROM a d WHERE d.id = 1; SELECT d.id FROM b
+```
+
+**Akar masalah.**
+Di Bab 11, scope dibuka dengan `beginScope` dan harus ditutup dengan `endScope` setiap kali selesai. Pasangan itu di kode kami adalah `_push()` dan `_pop()`. `_select()` dan `_update()` sudah memanggil keduanya, tetapi `_delete()` hanya memanggil `_push()`. Scope DELETE tertinggal di tumpukan, menjadi induk scope statement berikutnya, dan aliasnya ikut terlihat. Ini melanggar aturan bahwa tiap statement berdiri sendiri.
+
+**Perbaikan.**
+Di `crud/resolver.py`, fungsi `_delete`, kami tambahkan `self._pop()` di akhir fungsi. *Alternatif yang ditolak:* mengosongkan `self.scope` di `resolve_script` setiap pergantian statement. Ditolak karena hanya menutupi gejalanya, sedangkan penyebabnya adalah `_push()` yang tidak berpasangan.
+
+**Test regresi.**
+`test_regresi_scope_delete_tidak_bocor_ke_statement_berikutnya` di `tests/test_tambahan.py`.
+
+**Peran AI.**
+AI membantu menemukan bahwa `_delete()` memanggil `_push()` tanpa `_pop()`. Diverifikasi dengan cek SQL DELETE lalu SELECT dan test regresi.
+
+---
+
+## Bug 10: Kolom Tanpa Qualifier Tidak Di-resolve (TODO T2)
+
+**Ditemukan oleh:** Muhamad Akmal Rizqillah · **Diperbaiki oleh:** Muhamad Akmal Rizqillah
+
+**Gejala.**
+Kolom tanpa qualifier selalu berakhir dengan `resolved = None` dan tidak ada warning apa pun. Padahal SPESIFIKASI.md bagian 4.3 menetapkan: kalau scope terdalam hanya punya satu tabel, kolom di-resolve ke tabel itu. Kalau lebih dari satu, muncul warning `kolom 'nama' ambigu tanpa skema` dan `resolved` tetap `None`. Kalau tidak ada tabel, muncul warning.
+
+**Reproduksi minimal.** SQL terpendek yang memicu bug:
+
+```sql
+SELECT nama FROM pelanggan
+```
+
+**Akar masalah.**
+Cabang untuk kolom tanpa qualifier di `_column()` hanya berisi `pass`. Berbeda dengan kolom ber-qualifier yang dicari ke seluruh rantai scope, kolom tanpa qualifier hanya boleh melihat scope terdalam. Tanpa nama alias, resolver hanya bisa menyimpulkan tabelnya kalau scope itu punya tepat satu entri. Itu penerapan ide Bab 11 bahwa pengikatan nama ditentukan oleh scope tempat nama itu muncul.
+
+**Perbaikan.**
+Di `crud/resolver.py`, fungsi `_column`, `pass` kami ganti dengan penghitungan entri di `self.scope`. Satu entri: `col.resolved` diisi lewat `_target_of(entry)`. Lebih dari satu: warning ambigu. Nol: warning. Ada pengecekan `self.scope is not None` karena `INSERT ... VALUES` di-resolve tanpa scope (SPESIFIKASI.md bagian 4.1). *Alternatif yang ditolak:* mencari ke scope induk bila scope terdalam kosong. Ditolak karena spesifikasi menyebut hanya scope terdalam yang dilihat.
+
+**Test regresi.**
+`test_regresi_kolom_tanpa_qualifier_ambigu` di `tests/test_tambahan.py`.
+
+**Peran AI.**
+AI membantu menyusun tiga cabang resolusi kolom tanpa qualifier dan mengingatkan kasus `INSERT ... VALUES` yang tidak punya scope. Diverifikasi dengan `pytest tests/test_resolver.py` dan test regresi.
