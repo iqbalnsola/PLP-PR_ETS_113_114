@@ -146,3 +146,15 @@ def test_regresi_kolom_tanpa_qualifier_ambigu():
     s, d = _resolve("SELECT id FROM a, b")
     assert _cols(s)[0].resolved is None
     assert [x.level for x in d] == ["warning"] and "ambigu" in d[0].message
+
+# ==============================================================================
+# 5. TEST REGRESI ANALYZER
+# ==============================================================================
+
+from crud.analyzer import analyze_statement
+
+def test_regresi_subquery_di_update_tetap_read():
+    """Bug 11: Tabel yang hanya dibaca lewat subquery di UPDATE harus R, bukan U.
+    SPESIFIKASI.md bagian 5."""
+    stmt = parse_sql("UPDATE a SET x = 1 WHERE id IN (SELECT a_id FROM b)").statements[0]
+    assert analyze_statement(stmt) == {"a": {"U"}, "b": {"R"}}
