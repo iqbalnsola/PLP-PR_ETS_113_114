@@ -114,3 +114,23 @@ dan informasi apa yang dibutuhkan untuk mengatasinya.
 ## 4. Pembagian kerja
 
 Siapa mengerjakan apa, dan bagaimana kalian memastikan keduanya memahami seluruh kode.
+
+Kami membagi pekerjaan per modul, dengan pembagian sebagai berikut:
+- **Iqbal:**
+  - `lexer.py` (Bug 1-3 dan TODO3): memperbaiki cara membaca teks SQL, yaitu keyword huruf kecil/campuran dikenali, `<>` dibaca sebagai satu operator, tanda kutip ganda `''` di dalam string dibaca benar, dan komentar blok `/* ... */` didukung.
+  - `analyzer.py` (Bug 11): tabel yang hanya dibaca lewat subquery di `UPDATE` sekarang dihitung `R`, bukan `U`.
+- **Akmal:**
+  - `parser.py` (Bug 4-7 dan TODO1): `INSERT ... SELECT` didukung, parser lanjut ke statement berikutnya setelah error (berhenti di `;`), `AND` didahulukan dari `OR`, dan `LEFT OUTER JOIN` diterima.
+  - `resolver.py` (Bug 8-10 dan TODO2): pencarian alias dimulai dari scope paling dalam, scope `DELETE` tidak lagi bocor ke statement berikutnya, dan kolom tanpa alias bisa dicocokkan dengan tabelnya.
+
+Kami juga memastikan satu sama lain bahwa bug yang kita temui memang merupakan sebuah bug, bukan hanya perkiraan dan kesalahan semata. Setiap bug yang ditemukan akan dicek kembali oleh penemu dan teman kita juga. Caranya dengan:
+1. Cocokkan dengan bagian SPESIFIKASI.md yang dirujuk. Kalau SPESIFIKASI.md tidak menyebutnya, maka bukan bug.
+2. Jalankan SQL contoh pada kode lama yang dimana hasilnya harus gagal dan pada kode baru hasilnya harus benar.
+3. Pastikan test regresinya jika dijalankan pada kode lama gagal dan ketika dijalankan pada kode baru berhasil.
+4. Jalankan semua test untuk memastikan tidak ada bagian lain yang rusak.
+
+Cara agar kami dapat memahami seluruh kodenya satu sama lain, yaitu dengan cara:
+- Kami masing-masing menjelaskan kepada satu sama lain mengenai apa yang kita temui, kerjakan, lalu apa yang sempat membuat kami kebingungan juga.
+- Kami juga saling bertanya juga jika ada yang merasa masih bingung.
+- Saran AI dicocokkan kembali dengan SPESIFIKASI.md.
+- Kami juga mencoba menjelaskan kode yang dikerjakan oleh teman kita.
