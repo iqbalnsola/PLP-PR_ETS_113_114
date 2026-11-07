@@ -1,7 +1,5 @@
 # Log Penggunaan AI
 
-Catat setiap penggunaan AI atau coding agent yang memengaruhi kode atau laporan.
-
 | No | Siapa | Prompt / tugas (ringkas) | Hasil: diterima, diubah, atau ditolak | Alasan | Cara verifikasi |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Muhammad Iqbal | Analisis penanganan case-insensitivity keyword pada `crud/lexer.py` dan mengapa `select 1` dianggap sebagai `IDENT` | Diubah | AI awalnya menyarankan menambahkan semua variasi kombinasi huruf besar-kecil ke kamus `KEYWORDS`. Saya tolak karena tidak scalable dan boros memori. Saya mengusulkan normalisasi `text.upper()` sebelum pengecekan ke `KEYWORDS`, namun token `IDENT` tetap mempertahankan teks aslinya agar parser nanti yang menormalisasi nama tabel/kolom ke huruf kecil sesuai spesifikasi 2.2 | Menjalankan `pytest tests/test_lexer.py` dan membuat test regresi `test_regresi_keyword_case_insensitive_dan_ident` di `tests/test_tambahan.py` (lulus) |

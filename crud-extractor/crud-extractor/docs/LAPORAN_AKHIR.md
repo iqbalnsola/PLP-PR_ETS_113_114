@@ -2,8 +2,6 @@
 
 ## 1. Hasil evaluasi
 
-Tempel keluaran `python evaluate.py` setelah `data/ground_truth.csv` dilengkapi.
-
 ```text
 Dievaluasi: audit.sql, campuran_error.sql, laporan_penjualan.sql, pemeliharaan.sql (27 triple)
 
@@ -32,9 +30,6 @@ regex         0.65    0.81   0.72
 ```
 
 ## 2. Tiga kasus di mana regex salah
-
-Untuk tiap kasus: SQL-nya, kesalahan regex, dan mengapa parser benar (kaitkan dengan konsep
-lexing, parsing, atau resolusi).
 
 1. **Kata Kunci SQL di Dalam Komentar (Kaitannya dengan Konsep Lexing/Scanning):**
    - **Potongan SQL (`laporan_penjualan.sql` baris 2 & `pemeliharaan.sql` baris 2):**
@@ -73,10 +68,6 @@ lexing, parsing, atau resolusi).
 
 ## 3. Batas pendekatan kami
 
-Minimal tiga hal yang **tidak bisa** ditangani dengan benar oleh tool ini meskipun semua bug
-sudah diperbaiki. Untuk tiap batas: contoh SQL atau situasinya, akibatnya pada CRUD matrix,
-dan informasi apa yang dibutuhkan untuk mengatasinya.
-
 1. **Ambiguitas Kolom Tanpa Qualifier pada Multi-Table Query Tanpa Akses Skema Fisik:**
    - **Contoh SQL / Situasi:**
      ```sql
@@ -112,8 +103,6 @@ dan informasi apa yang dibutuhkan untuk mengatasinya.
      Dibutuhkan **analisis dinamis (Runtime Tracing / Query Log Monitoring)** atau *taint analysis & data-flow analysis* dari kode aplikasi pemanggil untuk merekonstruksi dan mengevaluasi string SQL sebelum diteruskan ke database engine.
 
 ## 4. Pembagian kerja
-
-Siapa mengerjakan apa, dan bagaimana kalian memastikan keduanya memahami seluruh kode.
 
 Kami membagi pekerjaan per modul, dengan pembagian sebagai berikut:
 - **Iqbal:**
